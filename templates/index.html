@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Meeting Notes Summarizer</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        textarea, input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        textarea {
+            min-height: 200px;
+            resize: vertical;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #summary {
+            min-height: 200px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 4px;
+            background-color: white;
+            margin-bottom: 15px;
+        }
+        .hidden {
+            display: none;
+        }
+        .loading {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .error {
+            color: #e74c3c;
+            margin-top: 10px;
+        }
+        .success {
+            color: #27ae60;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>AI Meeting Notes Summarizer</h1>
+
+    <div class="section">
+        <h2>1. Upload Transcript</h2>
+        <textarea id="transcript" placeholder="Paste your meeting transcript here..."></textarea>
+
+        <h2>2. Custom Instructions (Optional)</h2>
+        <input type="text" id="instructions" placeholder="E.g. 'Summarize in bullet points for executives'">
+
+        <button id="generateBtn">Generate Summary</button>
+        <div id="loading" class="loading hidden">Generating summary... Please wait.</div>
+        <div id="error" class="error hidden"></div>
+    </div>
+
+    <div id="summarySection" class="section hidden">
+        <h2>3. Generated Summary</h2>
+        <div id="summary" contenteditable="true"></div>
+
+        <h2>4. Share Summary</h2>
+        <input type="text" id="recipients" placeholder="Enter recipient emails (comma separated)">
+        <button id="shareBtn">Share via Email</button>
+        <div id="shareStatus" class="hidden"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const generateBtn = document.getElementById('generateBtn');
+            const shareBtn = document.getElementById('shareBtn');
+            const loading = document.getElementById('loading');
+            const errorDiv = document.getElementById('error');
+            const summarySection = document.getElementById('summarySection');
+            const shareStatus = document.getElementById('shareStatus');
+
+            generateBtn.addEventListener('click', async function() {
+                const transcript = document.getElementById('transcript').value;
+                const instructions = document.getElementById('instructions').value;
+
+                if (!transcript) {
+                    showError('Please enter a transcript to summarize');
+                    return;
+                }
+
+                // Show loading state
+                loading.classList.remove('hidden');
+                errorDiv.classList.add('hidden');
+                generateBtn.disabled = true;
+
+                try {
+                    const response = await fetch('/summarize', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            transcript: transcript,
+                            instructions: instructions
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Failed to generate summary');
+                    }
+
+                    // Display the summary
+                    document.getElementById('summary').innerHTML = data.summary;
+                    summarySection.classList.remove('hidden');
+                    window.scrollTo({
+                        top: document.getElementById('summarySection').offsetTop,
+                        behavior: 'smooth'
+                    });
+                } catch (error) {
+                    showError(error.message);
+                } finally {
+                    loading.classList.add('hidden');
+                    generateBtn.disabled = false;
+                }
+            });
+
+            shareBtn.addEventListener('click', async function() {
+                const summary = document.getElementById('summary').innerHTML;
+                const recipients = document.getElementById('recipients').value;
+
+                if (!recipients) {
+                    showError('Please enter at least one recipient email');
+                    return;
+                }
+
+                shareBtn.disabled = true;
+                shareStatus.textContent = 'Sending email...';
+                shareStatus.classList.remove('hidden');
+                shareStatus.classList.remove('success', 'error');
+
+                try {
+                    const response = await fetch('/share', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            summary: summary,
+                            recipients: recipients
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Failed to send email');
+                    }
+
+                    shareStatus.textContent = 'Email sent successfully!';
+                    shareStatus.classList.add('success');
+                } catch (error) {
+                    shareStatus.textContent = 'Error: ' + error.message;
+                    shareStatus.classList.add('error');
+                } finally {
+                    shareBtn.disabled = false;
+                }
+            });
+
+            function showError(message) {
+                errorDiv.textContent = message;
+                errorDiv.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: meeting-summarizer
+    runtime: python
+    buildCommand: "pip install -r req.txt"
+    startCommand: "gunicorn app:app"
+    envVars:
+      - key: GROQ_API_KEY
+        value: your_groq_key_here
+      - key: MAIL_USERNAME
+        value: your_email@gmail.com
+      - key: MAIL_PASSWORD
+        value: your_app_password
